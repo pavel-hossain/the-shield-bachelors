@@ -1,0 +1,6 @@
+{
+  "name": "The Shield Bachelors Mess",
+  "description": "Modern, mobile-first Mess Management System for Police Line, Magura bachelors with daily meal tracking, expenses, deposits, and A4 reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
