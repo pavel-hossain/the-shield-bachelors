@@ -82,7 +82,7 @@ export interface MemberFinancialSummary {
 
 export interface GlobalSearchResult {
   id: string;
-  type: 'Deposit' | 'Market Expense' | 'Utility Expense' | 'Meal Record';
+  type: 'Deposit' | 'Market Expense' | 'Utility Expense' | 'Meal Record' | 'Member';
   date: string;
   title: string;
   memberName: string;

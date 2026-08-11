@@ -12,6 +12,9 @@ import {
   ShieldCheck,
   UserCheck,
   Database,
+  Lock,
+  LogOut,
+  KeyRound,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -25,9 +28,9 @@ export const Header: React.FC = () => {
     setIsReportModalOpen,
     setIsExcelModalOpen,
     setIsBackupModalOpen,
-    userMode,
-    setUserMode,
     isManagerMode,
+    setIsAdminModalOpen,
+    logoutAdmin,
   } = useMess();
 
   return (
@@ -94,33 +97,42 @@ export const Header: React.FC = () => {
               <ChevronDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Role Switcher Toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 shadow-xs">
-              <button
-                onClick={() => setUserMode('Manager')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  isManagerMode
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Manager Mode: Full Access"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Manager</span>
-              </button>
-              <button
-                onClick={() => setUserMode('Member')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  !isManagerMode
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Member Mode: Read-Only View"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Member View</span>
-              </button>
-            </div>
+            {/* Admin Authentication & Mode Controls */}
+            {isManagerMode ? (
+              <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 p-1 rounded-xl border border-emerald-200 dark:border-emerald-800 shrink-0 shadow-xs">
+                <button
+                  onClick={() => setIsAdminModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-xs hover:bg-emerald-500 transition whitespace-nowrap"
+                  title="Manager Authenticated — Click to manage PIN or view settings"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Manager (Admin)</span>
+                </button>
+                <button
+                  onClick={logoutAdmin}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/80 transition whitespace-nowrap"
+                  title="Exit Admin Mode / Switch back to Viewer Mode"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Exit Admin</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                  <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Viewer Mode</span>
+                </div>
+                <button
+                  onClick={() => setIsAdminModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm whitespace-nowrap"
+                  title="Click to enter Manager Passcode & unlock editing"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Manager Login</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Tools Group */}

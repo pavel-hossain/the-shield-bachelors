@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   BarChart3,
   Download,
+  Calculator,
 } from 'lucide-react';
 import { TabType } from '../BottomNav';
 
@@ -50,6 +51,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
     setIsExportSummaryModalOpen,
     closeMonthAndStartNewCycle,
     isManagerMode,
+    setIsAdminModalOpen,
   } = useMess();
 
   const [isCloseMonthConfirmOpen, setIsCloseMonthConfirmOpen] = React.useState(false);
@@ -79,6 +81,14 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
           <p className="text-xs text-slate-400 font-medium">Police Line, Magura Sadar</p>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shadow-xs"
+            title="Open Monthly Financial Summary & Balance Sheets"
+          >
+            <Calculator className="w-3.5 h-3.5" />
+            <span>Financial Summary</span>
+          </button>
           <button
             onClick={() => setIsExportSummaryModalOpen(true)}
             className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap shadow-xs"
@@ -120,9 +130,17 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             </>
           )}
           {!isManagerMode && (
-            <span className="text-[11px] font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 px-2.5 py-1 rounded-lg whitespace-nowrap">
-              📱 Member View (Read-Only)
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                👁️ Member View (Read-Only)
+              </span>
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+              >
+                Manager Login
+              </button>
+            </div>
           )}
         </div>
       </div>

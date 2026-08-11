@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Utensils, ShoppingBag, Zap, CreditCard, Users } from 'lucide-react';
+import { LayoutDashboard, Utensils, Calculator, ShoppingBag, Zap, CreditCard, Users } from 'lucide-react';
 
-export type TabType = 'dashboard' | 'meals' | 'expenses' | 'utilities' | 'deposits' | 'members';
+export type TabType = 'dashboard' | 'meals' | 'summary' | 'expenses' | 'utilities' | 'deposits' | 'members';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -10,17 +10,18 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
   const navItems: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'meals', label: 'Daily Meals', icon: <Utensils className="w-5 h-5" /> },
-    { id: 'expenses', label: 'Expenses', icon: <ShoppingBag className="w-5 h-5" /> },
-    { id: 'utilities', label: 'Utility Bills', icon: <Zap className="w-5 h-5" /> },
-    { id: 'deposits', label: 'Deposits', icon: <CreditCard className="w-5 h-5" /> },
-    { id: 'members', label: 'Members', icon: <Users className="w-5 h-5" /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'meals', label: 'Meals', icon: <Utensils className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'summary', label: 'Summary', icon: <Calculator className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'expenses', label: 'Expenses', icon: <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'utilities', label: 'Utilities', icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'deposits', label: 'Deposits', icon: <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" /> },
+    { id: 'members', label: 'Members', icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" /> },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-lg h-16 py-1 px-1 transition-colors">
-      <div className="max-w-lg mx-auto h-full grid grid-cols-6 items-center justify-items-center">
+      <div className="max-w-2xl mx-auto h-full grid grid-cols-7 items-center justify-items-center">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -36,7 +37,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
               <div className={`p-1 rounded-lg ${isActive ? 'bg-emerald-50 dark:bg-emerald-950/60' : ''}`}>
                 {item.icon}
               </div>
-              <span className="text-[10px] leading-none mt-1 tracking-tight whitespace-nowrap">
+              <span className="text-[9px] sm:text-[10px] leading-none mt-0.5 sm:mt-1 tracking-tighter sm:tracking-tight whitespace-nowrap">
                 {item.label}
               </span>
             </button>

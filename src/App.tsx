@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { BottomNav, TabType } from './components/BottomNav';
 import { ExecutiveDashboard } from './components/Dashboard/ExecutiveDashboard';
 import { DailyMealsModule } from './components/DailyMeals/DailyMealsModule';
+import { MonthlyFinancialSummaryModule } from './components/FinancialSummary/MonthlyFinancialSummaryModule';
 import { ExpensesModule } from './components/Expenses/ExpensesModule';
 import { UtilitiesModule } from './components/Utilities/UtilitiesModule';
 import { DepositsModule } from './components/Deposits/DepositsModule';
@@ -14,6 +15,7 @@ import { GlobalSearchModal } from './components/Modals/GlobalSearchModal';
 import { ExcelParserModal } from './components/Modals/ExcelParserModal';
 import { BackupModal } from './components/Modals/BackupModal';
 import { ExportSummaryModal } from './components/Modals/ExportSummaryModal';
+import { AdminLoginModal } from './components/Modals/AdminLoginModal';
 import { A4PDFReportModal } from './components/Reports/A4PDFReportModal';
 
 function MainLayout() {
@@ -44,6 +46,8 @@ function MainLayout() {
 
         {activeTab === 'meals' && <DailyMealsModule />}
 
+        {activeTab === 'summary' && <MonthlyFinancialSummaryModule />}
+
         {activeTab === 'expenses' && (
           <ExpensesModule
             isAddModalOpen={isAddExpenseModalOpen}
@@ -72,6 +76,7 @@ function MainLayout() {
       <ExcelParserModal />
       <BackupModal />
       <ExportSummaryModal />
+      <AdminLoginModal />
       <A4PDFReportModal />
     </div>
   );

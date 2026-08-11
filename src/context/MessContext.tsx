@@ -22,6 +22,14 @@ interface MessContextType {
   setUserMode: (mode: 'Manager' | 'Member') => void;
   isManagerMode: boolean;
 
+  // Admin Authentication
+  isAdminModalOpen: boolean;
+  setIsAdminModalOpen: (open: boolean) => void;
+  adminPin: string;
+  loginAsAdmin: (inputPin: string) => { success: boolean; error?: string };
+  logoutAdmin: () => void;
+  updateAdminPin: (newPin: string) => void;
+
   // State
   periods: MonthPeriod[];
   currentPeriod: MonthPeriod;
@@ -80,7 +88,13 @@ interface MessContextType {
 
   upsertMealRecord: (date: string, memberId: string, b: number, l: number, d: number) => void;
   setAllMealsForDate: (date: string, b: number, l: number, d: number) => void;
-  copyPreviousDayMeals: (targetDate: string) => void;
+  copyPreviousDayMeals: (targetDate: string) => {
+    success: boolean;
+    count?: number;
+    sourceDate?: string;
+    isFallback?: boolean;
+    error?: string;
+  };
   clearMealsForDate: (date: string) => void;
 
   addExpense: (exp: Omit<Expense, 'id'>) => void;
@@ -106,8 +120,36 @@ interface MessContextType {
 const MessContext = createContext<MessContextType | undefined>(undefined);
 
 export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [userMode, setUserMode] = useState<'Manager' | 'Member'>('Manager');
+  const [userMode, setUserMode] = useState<'Manager' | 'Member'>(() => {
+    return localStorage.getItem('shield_mess_admin_auth') === 'true' ? 'Manager' : 'Member';
+  });
   const isManagerMode = userMode === 'Manager';
+
+  const [adminPin, setAdminPin] = useState<string>(() => {
+    return localStorage.getItem('shield_mess_admin_pin') || '2026';
+  });
+
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
+  const loginAsAdmin = (inputPin: string) => {
+    if (inputPin.trim() === adminPin) {
+      setUserMode('Manager');
+      localStorage.setItem('shield_mess_admin_auth', 'true');
+      setIsAdminModalOpen(false);
+      return { success: true };
+    }
+    return { success: false, error: 'Incorrect Passcode / PIN. Default PIN is 2026.' };
+  };
+
+  const logoutAdmin = () => {
+    setUserMode('Member');
+    localStorage.removeItem('shield_mess_admin_auth');
+  };
+
+  const updateAdminPin = (newPin: string) => {
+    setAdminPin(newPin);
+    localStorage.setItem('shield_mess_admin_pin', newPin);
+  };
 
   const [periods, setPeriods] = useState<MonthPeriod[]>(INITIAL_PERIODS);
   const [currentPeriod, setCurrentPeriod] = useState<MonthPeriod>(INITIAL_PERIODS[0]);
@@ -366,16 +408,42 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const copyPreviousDayMeals = (targetDate: string) => {
-    const target = new Date(targetDate);
+    const parts = targetDate.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) {
+      return { success: false, error: 'Invalid target date format.' };
+    }
+    const [y, m, d] = parts;
+    const target = new Date(y, m - 1, d);
     target.setDate(target.getDate() - 1);
-    const prevDateStr = target.toISOString().split('T')[0];
+    const prevY = target.getFullYear();
+    const prevM = String(target.getMonth() + 1).padStart(2, '0');
+    const prevD = String(target.getDate()).padStart(2, '0');
+    const prevDateStr = `${prevY}-${prevM}-${prevD}`;
 
     const prevMeals = meals.filter((m) => m.date === prevDateStr);
-    if (prevMeals.length === 0) return;
 
-    prevMeals.forEach((pm) => {
-      upsertMealRecord(targetDate, pm.memberId, pm.breakfast, pm.lunch, pm.dinner);
-    });
+    if (prevMeals.length > 0) {
+      prevMeals.forEach((pm) => {
+        upsertMealRecord(targetDate, pm.memberId, pm.breakfast, pm.lunch, pm.dinner);
+      });
+      return { success: true, count: prevMeals.length, sourceDate: prevDateStr, isFallback: false };
+    }
+
+    // Find the most recent date prior to targetDate with recorded meals
+    const priorDates = Array.from(new Set(meals.filter((m) => m.date < targetDate).map((m) => m.date)))
+      .sort()
+      .reverse();
+
+    if (priorDates.length > 0) {
+      const fallbackDate = priorDates[0];
+      const fallbackMeals = meals.filter((m) => m.date === fallbackDate);
+      fallbackMeals.forEach((pm) => {
+        upsertMealRecord(targetDate, pm.memberId, pm.breakfast, pm.lunch, pm.dinner);
+      });
+      return { success: true, count: fallbackMeals.length, sourceDate: fallbackDate, isFallback: true };
+    }
+
+    return { success: false, error: `No previous meal records found before ${targetDate}.` };
   };
 
   const clearMealsForDate = (date: string) => {
@@ -499,6 +567,26 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!query || query.trim().length < 2) return [];
     const q = query.toLowerCase().trim();
     const results: GlobalSearchResult[] = [];
+
+    // Search Members
+    members.forEach((mem) => {
+      if (
+        mem.name.toLowerCase().includes(q) ||
+        mem.phone.includes(q) ||
+        (mem.roomNo && mem.roomNo.toLowerCase().includes(q)) ||
+        mem.role.toLowerCase().includes(q)
+      ) {
+        results.push({
+          id: mem.id,
+          type: 'Member',
+          date: mem.joiningDate || currentMonthPrefix,
+          title: mem.name,
+          memberName: `Room ${mem.roomNo || 'N/A'} • ${mem.role}`,
+          amountOrCount: mem.status,
+          details: `Phone: ${mem.phone}`,
+        });
+      }
+    });
 
     // Search Deposits
     deposits.forEach((dep) => {
@@ -639,6 +727,13 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userMode,
         setUserMode,
         isManagerMode,
+
+        isAdminModalOpen,
+        setIsAdminModalOpen,
+        adminPin,
+        loginAsAdmin,
+        logoutAdmin,
+        updateAdminPin,
         periods,
         currentPeriod,
         setCurrentPeriod,

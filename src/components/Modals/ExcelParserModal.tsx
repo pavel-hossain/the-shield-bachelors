@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useMess } from '../../context/MessContext';
+import { MemberRole, MemberStatus } from '../../types';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Upload, Check, AlertCircle, Download, X } from 'lucide-react';
 
 export const ExcelParserModal: React.FC = () => {
-  const { isExcelModalOpen, setIsExcelModalOpen, importExcelData } = useMess();
+  const { isExcelModalOpen, setIsExcelModalOpen, importExcelData, members } = useMess();
 
   const [fileName, setFileName] = useState('');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
@@ -33,7 +34,7 @@ export const ExcelParserModal: React.FC = () => {
         const data = XLSX.utils.sheet_to_json(ws);
         setParsedRows(data);
       } catch (err: any) {
-        setStatusMessage({ type: 'error', text: 'Failed to parse Excel file. Please ensure valid format.' });
+        setStatusMessage({ type: 'error', text: 'Failed to parse file. Please ensure valid CSV or Excel format.' });
       }
     };
     reader.readAsBinaryString(file);
@@ -44,18 +45,23 @@ export const ExcelParserModal: React.FC = () => {
 
     if (importType === 'deposits') {
       const depositsToImport = parsedRows.map((row) => {
-        // Auto-map column headers ("Name"/"Member", "Date", "Amount"/"Taka", "Method")
-        const nameVal = row['Name'] || row['Member'] || row['member'] || 'Aktar Hossain';
+        const nameVal = String(row['Name'] || row['Member'] || row['member'] || 'Aktar Hossain').trim();
         const amountVal = Number(row['Amount'] || row['Deposit'] || row['Taka'] || row['taka'] || 1000);
-        const dateVal = row['Date'] || row['date'] || '2026-08-09';
-        const methodVal = row['Method'] || row['method'] || 'bKash';
+        const dateVal = String(row['Date'] || row['date'] || new Date().toISOString().split('T')[0]);
+        const methodVal = String(row['Method'] || row['method'] || 'bKash');
+
+        const matchedMember = members.find((m) =>
+          m.name.toLowerCase().includes(nameVal.toLowerCase()) ||
+          nameVal.toLowerCase().includes(m.name.toLowerCase())
+        );
+        const memberId = matchedMember ? matchedMember.id : members[0]?.id || 'm1';
 
         return {
           date: dateVal,
-          memberId: 'm1', // Default or matched by name
+          memberId,
           amount: amountVal,
-          method: methodVal as any,
-          notes: `Imported via ${fileName}`,
+          method: (methodVal as any) || 'bKash',
+          notes: `CSV Import from ${fileName}`,
         };
       });
 
@@ -63,39 +69,90 @@ export const ExcelParserModal: React.FC = () => {
       setStatusMessage({ type: 'success', text: res.message });
     } else if (importType === 'expenses') {
       const expensesToImport = parsedRows.map((row) => {
-        const titleVal = row['Title'] || row['Item'] || row['Expense'] || 'Market Expense';
+        const titleVal = String(row['Title'] || row['Item'] || row['Expense'] || 'Market Shopping');
         const amountVal = Number(row['Amount'] || row['Cost'] || row['Taka'] || 1200);
-        const dateVal = row['Date'] || row['date'] || '2026-08-09';
-        const categoryVal = row['Category'] || 'Market Shopping';
+        const dateVal = String(row['Date'] || row['date'] || new Date().toISOString().split('T')[0]);
+        const categoryVal = String(row['Category'] || 'Market Shopping');
+        const shopperVal = String(row['Shopper'] || row['PaidBy'] || row['Member'] || '');
+
+        const matchedMember = members.find((m) =>
+          m.name.toLowerCase().includes(shopperVal.toLowerCase())
+        );
+        const shopperId = matchedMember ? matchedMember.id : members[0]?.id || 'm1';
 
         return {
           date: dateVal,
           title: titleVal,
-          category: categoryVal as any,
+          category: (categoryVal as any) || 'Market Shopping',
           amount: amountVal,
-          paidByMemberId: 'm1',
-          notes: `Imported from ${fileName}`,
+          paidByMemberId: shopperId,
+          notes: `CSV Import from ${fileName}`,
         };
       });
 
       const res = importExcelData({ expenses: expensesToImport });
+      setStatusMessage({ type: 'success', text: res.message });
+    } else if (importType === 'members') {
+      const membersToImport = parsedRows.map((row) => {
+        const nameVal = String(row['Name'] || row['Member'] || 'New Member');
+        const roomVal = String(row['Room'] || row['RoomNo'] || '101');
+        const phoneVal = String(row['Phone'] || row['Mobile'] || '01700000000');
+        const statusVal = String(row['Status'] || 'Active');
+        const balanceVal = Number(row['OpeningBalance'] || row['Carried'] || 0);
+
+        return {
+          name: nameVal,
+          phone: phoneVal,
+          roomNo: roomVal,
+          role: 'Member' as MemberRole,
+          status: (statusVal === 'Inactive' ? 'Inactive' : 'Active') as MemberStatus,
+          avatarColor: 'bg-emerald-600',
+          openingBalance: balanceVal,
+        };
+      });
+
+      const res = importExcelData({ members: membersToImport });
       setStatusMessage({ type: 'success', text: res.message });
     }
 
     setParsedRows([]);
   };
 
-  const downloadSampleTemplate = () => {
-    const sampleData = [
-      { Date: '2026-08-09', Member: 'Aktar Hossain', Amount: 3000, Method: 'bKash' },
-      { Date: '2026-08-09', Member: 'Kamrul Islam', Amount: 2500, Method: 'Cash' },
-      { Date: '2026-08-09', Member: 'Sumon Ahmed', Amount: 2000, Method: 'Nagad' },
-    ];
+  const downloadSampleTemplate = (format: 'csv' | 'xlsx' = 'csv') => {
+    let sampleData: any[] = [];
+    let filename = 'Shield_Mess_Template';
+
+    if (importType === 'deposits') {
+      sampleData = [
+        { Date: '2026-08-09', Member: 'Aktar Hossain', Amount: 3000, Method: 'bKash' },
+        { Date: '2026-08-09', Member: 'Kamrul Islam', Amount: 2500, Method: 'Cash' },
+        { Date: '2026-08-09', Member: 'Sumon Ahmed', Amount: 2000, Method: 'Nagad' },
+      ];
+      filename = 'Shield_Mess_Deposits_Template';
+    } else if (importType === 'expenses') {
+      sampleData = [
+        { Date: '2026-08-09', Title: 'Fish & Chicken Market', Amount: 1850, Category: 'Market Shopping', Shopper: 'Aktar Hossain' },
+        { Date: '2026-08-09', Title: 'Rice 50kg Bag', Amount: 3200, Category: 'Market Shopping', Shopper: 'Kamrul Islam' },
+        { Date: '2026-08-10', Title: 'Cook Maid Salary', Amount: 4000, Category: 'Cook / Maid', Shopper: 'Mess Manager' },
+      ];
+      filename = 'Shield_Mess_Expenses_Template';
+    } else {
+      sampleData = [
+        { Name: 'Tareq Rahman', RoomNo: '204', Phone: '01711223344', Status: 'Active', OpeningBalance: 0 },
+        { Name: 'Jahid Hasan', RoomNo: '205', Phone: '01899887766', Status: 'Active', OpeningBalance: 150 },
+      ];
+      filename = 'Shield_Mess_Members_Template';
+    }
 
     const ws = XLSX.utils.json_to_sheet(sampleData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'SampleData');
-    XLSX.writeFile(wb, 'Shield_Mess_Import_Template.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Sample');
+
+    if (format === 'csv') {
+      XLSX.writeFile(wb, `${filename}.csv`, { bookType: 'csv' });
+    } else {
+      XLSX.writeFile(wb, `${filename}.xlsx`, { bookType: 'xlsx' });
+    }
   };
 
   return (

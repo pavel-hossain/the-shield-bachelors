@@ -65,6 +65,56 @@ export const BackupModal: React.FC = () => {
     }, 400);
   };
 
+  // Quick CSV Export Handler
+  const handleExportCSVCategory = (type: 'expenses' | 'deposits' | 'members' | 'meals') => {
+    let csvRows: string[] = [];
+    let fileName = `Shield_Mess_${type}_${currentPeriod.label.replace(/\s+/g, '_')}.csv`;
+
+    if (type === 'expenses') {
+      csvRows.push('"Date","Title","Category","Amount (৳)","Paid By Member","Notes"');
+      expenses.forEach((e) => {
+        const shopper = members.find((m) => m.id === e.paidByMemberId);
+        csvRows.push(
+          `"${e.date}","${e.title.replace(/"/g, '""')}","${e.category}",${e.amount},"${shopper ? shopper.name : 'Mess Fund'}","${(e.notes || '').replace(/"/g, '""')}"`
+        );
+      });
+    } else if (type === 'deposits') {
+      csvRows.push('"Date","Member Name","Room","Amount (৳)","Payment Method","Transaction ID","Notes"');
+      deposits.forEach((d) => {
+        const mem = members.find((m) => m.id === d.memberId);
+        csvRows.push(
+          `"${d.date}","${mem ? mem.name : 'Unknown'}","${mem?.roomNo || ''}",${d.amount},"${d.method}","${d.transactionId || ''}","${(d.notes || '').replace(/"/g, '""')}"`
+        );
+      });
+    } else if (type === 'members') {
+      csvRows.push('"Member Name","Room No","Phone","Role","Status","Carried Opening Balance (৳)"');
+      members.forEach((m) => {
+        csvRows.push(
+          `"${m.name.replace(/"/g, '""')}","${m.roomNo || ''}","${m.phone}","${m.role}","${m.status}",${m.openingBalance || 0}`
+        );
+      });
+    } else if (type === 'meals') {
+      csvRows.push('"Date","Member Name","Breakfast","Lunch","Dinner","Total Meals"');
+      meals.forEach((m) => {
+        const mem = members.find((mem) => mem.id === m.memberId);
+        const total = (Number(m.breakfast) || 0) + (Number(m.lunch) || 0) + (Number(m.dinner) || 0);
+        csvRows.push(
+          `"${m.date}","${mem ? mem.name : 'Unknown'}",${m.breakfast},${m.lunch},${m.dinner},${total}`
+        );
+      });
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatusMessage({ type: 'success', text: `${type.toUpperCase()} CSV file downloaded successfully!` });
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 my-auto">
@@ -143,12 +193,43 @@ export const BackupModal: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <button
+              onClick={() => handleExportCSVCategory('deposits')}
+              className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Deposits CSV</span>
+            </button>
+            <button
+              onClick={() => handleExportCSVCategory('expenses')}
+              className="px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded-lg border border-amber-200 dark:border-amber-800 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Expenses CSV</span>
+            </button>
+            <button
+              onClick={() => handleExportCSVCategory('members')}
+              className="px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-200 rounded-lg border border-purple-200 dark:border-purple-800 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Members CSV</span>
+            </button>
+            <button
+              onClick={() => handleExportCSVCategory('meals')}
+              className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 rounded-lg border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Meals CSV</span>
+            </button>
+          </div>
+
           <button
             onClick={exportBackupData}
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs"
+            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span>Download Backup JSON ({currentPeriod.label})</span>
+            <span>Download Complete System Backup JSON ({currentPeriod.label})</span>
           </button>
         </div>
 
