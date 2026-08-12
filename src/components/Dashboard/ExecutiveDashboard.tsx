@@ -19,6 +19,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { TabType } from '../BottomNav';
+import { BudgetAlertBanner } from './BudgetAlertBanner';
 
 interface ExecutiveDashboardProps {
   setActiveTab: (tab: TabType) => void;
@@ -145,10 +146,13 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
       </div>
 
+      {/* Budget Alert Banner */}
+      <BudgetAlertBanner />
+
       {/* Financial Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
         {/* Effective Meal Rate Card */}
-        <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3.5 rounded-xl shadow-xs relative overflow-hidden">
+        <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3.5 rounded-xl shadow-xs relative overflow-hidden hover-shine hover-lift hover-glow">
           <div className="absolute right-2 top-2 opacity-10">
             <TrendingUp className="w-16 h-16" />
           </div>
@@ -173,7 +177,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
 
         {/* Manager Cash Balance */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs hover-shine hover-lift hover-border-glow">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-[11px] font-bold uppercase tracking-wider">Manager Cash</span>
             <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -195,7 +199,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
 
         {/* Total Expenses (Pure Market Shopping Only) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs hover-shine hover-lift hover-border-glow">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-[11px] font-bold uppercase tracking-wider">Total Expense</span>
             <Receipt className="w-4 h-4 text-amber-500" />
@@ -211,7 +215,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
 
         {/* Total Utility Costs */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs hover-shine hover-lift hover-border-glow">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-[11px] font-bold uppercase tracking-wider">Utilities & Maid</span>
             <Zap className="w-4 h-4 text-indigo-500" />

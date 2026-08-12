@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMess } from '../context/MessContext';
 import {
   Shield,
@@ -15,6 +15,12 @@ import {
   Lock,
   LogOut,
   KeyRound,
+  Download,
+  Palette,
+  Mic,
+  Wifi,
+  WifiOff,
+  Smartphone,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -31,7 +37,33 @@ export const Header: React.FC = () => {
     isManagerMode,
     setIsAdminModalOpen,
     logoutAdmin,
+    setIsThemeModalOpen,
+    isOnline,
+    pendingSyncQueue,
+    setIsOfflineSyncModalOpen,
+    setIsVoiceEntryModalOpen,
+    setIsAPKModalOpen,
   } = useMess();
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs px-3 sm:px-6 py-2.5 transition-colors">
@@ -56,6 +88,38 @@ export const Header: React.FC = () => {
           {/* Mobile Right Quick Controls */}
           <div className="flex lg:hidden items-center gap-1.5">
             <button
+              onClick={() => setIsVoiceEntryModalOpen(true)}
+              className="p-2 rounded-lg text-white bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 transition shadow-xs cursor-pointer animate-pulse"
+              title="AI Voice Assistant"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsOfflineSyncModalOpen(true)}
+              className={`p-2 rounded-lg transition border cursor-pointer ${
+                isOnline
+                  ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800'
+                  : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800 animate-pulse'
+              }`}
+              title={isOnline ? 'Online - Auto Sync Active' : `Offline - ${pendingSyncQueue.length} Queued`}
+            >
+              {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4 text-amber-500" />}
+            </button>
+            <button
+              onClick={() => setIsAPKModalOpen(true)}
+              className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 transition"
+              title="Convert to Android APK"
+            >
+              <Smartphone className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsThemeModalOpen(true)}
+              className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 transition"
+              title="Customize Themes & Effects"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setIsSearchModalOpen(true)}
               className="p-2 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               title="Search History"
@@ -65,7 +129,7 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-              title="Toggle Theme"
+              title="Toggle Light/Dark"
             >
               {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
@@ -137,6 +201,18 @@ export const Header: React.FC = () => {
 
           {/* Action Tools Group */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            {/* PWA Install Button */}
+            {deferredPrompt && (
+              <button
+                onClick={handleInstallApp}
+                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-md animate-pulse whitespace-nowrap shrink-0"
+                title="Install 'The Shield Mess' App on your phone or desktop"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Install App</span>
+              </button>
+            )}
+
             {/* Desktop Search Trigger */}
             <button
               onClick={() => setIsSearchModalOpen(true)}
@@ -177,10 +253,58 @@ export const Header: React.FC = () => {
               <span>A4 Statement</span>
             </button>
 
+            {/* AI Voice Assistant Trigger */}
+            <button
+              onClick={() => setIsVoiceEntryModalOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-white bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 transition shadow-xs text-xs font-bold cursor-pointer hover-glow"
+              title="AI Voice Assistant for Expenses & Meals"
+            >
+              <Mic className="w-3.5 h-3.5 animate-pulse" />
+              <span>Voice AI</span>
+            </button>
+
+            {/* Offline Sync Status Chip */}
+            <button
+              onClick={() => setIsOfflineSyncModalOpen(true)}
+              className={`hidden lg:flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                isOnline
+                  ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800'
+                  : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800 animate-pulse'
+              }`}
+              title="Click to view offline queue & sync manager"
+            >
+              {isOnline ? (
+                <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <WifiOff className="w-3.5 h-3.5 text-amber-500" />
+              )}
+              <span>{isOnline ? 'Synced' : `Offline (${pendingSyncQueue.length})`}</span>
+            </button>
+
+            {/* Android APK Converter Trigger */}
+            <button
+              onClick={() => setIsAPKModalOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition border border-emerald-200 dark:border-emerald-800/80 text-xs font-semibold cursor-pointer"
+              title="Convert to Android APK / WebAPK Shell"
+            >
+              <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Android APK</span>
+            </button>
+
+            {/* Desktop Theme Customization Trigger */}
+            <button
+              onClick={() => setIsThemeModalOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition border border-emerald-200 dark:border-emerald-800/80 text-xs font-semibold cursor-pointer"
+              title="Customize Themes & Visual Effects"
+            >
+              <Palette className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Theme</span>
+            </button>
+
             {/* Desktop Theme Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="hidden lg:flex p-1.5 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700"
+              className="hidden lg:flex p-1.5 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700 cursor-pointer"
               title="Toggle Light/Dark Theme"
             >
               {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}

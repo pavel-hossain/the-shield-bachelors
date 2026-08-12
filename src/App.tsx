@@ -16,9 +16,23 @@ import { ExcelParserModal } from './components/Modals/ExcelParserModal';
 import { BackupModal } from './components/Modals/BackupModal';
 import { ExportSummaryModal } from './components/Modals/ExportSummaryModal';
 import { AdminLoginModal } from './components/Modals/AdminLoginModal';
+import { ThemeModal } from './components/Modals/ThemeModal';
+import { APKConvertModal } from './components/Modals/APKConvertModal';
+import { VoiceEntryModal } from './components/Modals/VoiceEntryModal';
+import { OfflineSyncModal } from './components/Modals/OfflineSyncModal';
 import { A4PDFReportModal } from './components/Reports/A4PDFReportModal';
+import { CustomCursor } from './components/CustomCursor';
+
+import { useMess } from './context/MessContext';
 
 function MainLayout() {
+  const {
+    isVoiceEntryModalOpen,
+    setIsVoiceEntryModalOpen,
+    isOfflineSyncModalOpen,
+    setIsOfflineSyncModalOpen,
+  } = useMess();
+
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
   const [isAddDepositModalOpen, setIsAddDepositModalOpen] = useState(false);
@@ -70,13 +84,24 @@ function MainLayout() {
       {/* Fixed Sleek Bottom Mobile Navigation */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Global Application Modals */}
+      {/* Global Application Modals & Custom Cursor */}
+      <CustomCursor />
       <MemberStatementModal />
       <GlobalSearchModal />
       <ExcelParserModal />
       <BackupModal />
       <ExportSummaryModal />
       <AdminLoginModal />
+      <ThemeModal />
+      <APKConvertModal />
+      <VoiceEntryModal
+        isOpen={isVoiceEntryModalOpen}
+        onClose={() => setIsVoiceEntryModalOpen(false)}
+      />
+      <OfflineSyncModal
+        isOpen={isOfflineSyncModalOpen}
+        onClose={() => setIsOfflineSyncModalOpen(false)}
+      />
       <A4PDFReportModal />
     </div>
   );

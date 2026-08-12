@@ -7,6 +7,7 @@ import {
   MonthPeriod,
   MemberFinancialSummary,
   GlobalSearchResult,
+  ColorTheme,
 } from '../types';
 import {
   INITIAL_PERIODS,
@@ -15,6 +16,13 @@ import {
   INITIAL_EXPENSES,
   INITIAL_DEPOSITS,
 } from '../data/mockData';
+import {
+  getOfflineQueue,
+  enqueueOfflineAction,
+  clearOfflineQueue,
+  getLastSyncTime,
+  updateLastSyncTime,
+} from '../utils/offlineSync';
 
 interface MessContextType {
   // User Mode / Role Access
@@ -36,6 +44,10 @@ interface MessContextType {
   setCurrentPeriod: (period: MonthPeriod) => void;
   darkMode: boolean;
   setDarkMode: (dark: boolean) => void;
+  colorTheme: ColorTheme;
+  setColorTheme: (theme: ColorTheme) => void;
+  customCursorEnabled: boolean;
+  setCustomCursorEnabled: (enabled: boolean) => void;
   members: Member[];
   meals: DailyMealRecord[];
   expenses: Expense[];
@@ -54,6 +66,22 @@ interface MessContextType {
   setIsBackupModalOpen: (open: boolean) => void;
   isExportSummaryModalOpen: boolean;
   setIsExportSummaryModalOpen: (open: boolean) => void;
+  isThemeModalOpen: boolean;
+  setIsThemeModalOpen: (open: boolean) => void;
+  isAPKModalOpen: boolean;
+  setIsAPKModalOpen: (open: boolean) => void;
+
+  // Offline & Voice State
+  isOnline: boolean;
+  pendingSyncQueue: any[];
+  lastSyncTime: string | null;
+  syncOfflineQueueNow: () => void;
+  clearPendingOfflineQueue: () => void;
+  isOfflineSyncModalOpen: boolean;
+  setIsOfflineSyncModalOpen: (open: boolean) => void;
+  isVoiceEntryModalOpen: boolean;
+  setIsVoiceEntryModalOpen: (open: boolean) => void;
+  updatePeriodBudget: (periodLabel: string, newBudget: number) => void;
 
   // Calculated Totals
   totalMarketExpense: number;
@@ -154,7 +182,20 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [periods, setPeriods] = useState<MonthPeriod[]>(INITIAL_PERIODS);
   const [currentPeriod, setCurrentPeriod] = useState<MonthPeriod>(INITIAL_PERIODS[0]);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('shield_mess_dark_mode');
+    if (saved !== null) return saved === 'true';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
+    return (localStorage.getItem('shield_mess_color_theme') as ColorTheme) || 'emerald';
+  });
+
+  const [customCursorEnabled, setCustomCursorEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('shield_mess_custom_cursor');
+    if (saved !== null) return saved === 'true';
+    // Default to enabled on non-coarse pointer devices
+    return window.matchMedia('(pointer: fine)').matches;
   });
 
   const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
@@ -169,15 +210,79 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isExportSummaryModalOpen, setIsExportSummaryModalOpen] = useState(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [isAPKModalOpen, setIsAPKModalOpen] = useState(false);
 
-  // Apply dark class to HTML body
+  // Offline & Voice Modals & Sync State
+  const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
+  const [isVoiceEntryModalOpen, setIsVoiceEntryModalOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [pendingSyncQueue, setPendingSyncQueue] = useState<any[]>(() => getOfflineQueue());
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => getLastSyncTime());
+
+  // Listen for online / offline events
   useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Automatically trigger sync on connection restore if queue is not empty
+      if (getOfflineQueue().length > 0) {
+        syncOfflineQueueNow();
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const syncOfflineQueueNow = () => {
+    // Process queue items
+    const queue = getOfflineQueue();
+    if (queue.length > 0) {
+      clearOfflineQueue();
+      setPendingSyncQueue([]);
+    }
+    const syncedAt = updateLastSyncTime();
+    setLastSyncTime(syncedAt);
+  };
+
+  const clearPendingOfflineQueue = () => {
+    clearOfflineQueue();
+    setPendingSyncQueue([]);
+  };
+
+  const updatePeriodBudget = (periodLabel: string, newBudget: number) => {
+    setPeriods((prev) =>
+      prev.map((p) => (p.label === periodLabel ? { ...p, targetBudget: newBudget } : p))
+    );
+    setCurrentPeriod((prev) => (prev.label === periodLabel ? { ...prev, targetBudget: newBudget } : prev));
+  };
+
+  // Apply dark mode & color theme attribute to HTML root
+  useEffect(() => {
+    localStorage.setItem('shield_mess_dark_mode', String(darkMode));
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('shield_mess_color_theme', colorTheme);
+    document.documentElement.setAttribute('data-theme', colorTheme);
+  }, [colorTheme]);
+
+  useEffect(() => {
+    localStorage.setItem('shield_mess_custom_cursor', String(customCursorEnabled));
+  }, [customCursorEnabled]);
 
   // Calculations
   const activeMembers = members.filter((m) => m.status === 'Active');
@@ -374,6 +479,15 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lunch: number,
     dinner: number
   ) => {
+    if (!isOnline) {
+      const q = enqueueOfflineAction(
+        'UPSERT_MEAL',
+        { date, memberId, breakfast, lunch, dinner },
+        `Upsert Meal for Member ${memberId} on ${date}`
+      );
+      setPendingSyncQueue(q);
+    }
+
     setMeals((prev) => {
       const idx = prev.findIndex((m) => m.date === date && m.memberId === memberId);
       if (idx >= 0) {
@@ -455,10 +569,18 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...exp,
       id: `exp-${Date.now()}`,
     };
+    if (!isOnline) {
+      const q = enqueueOfflineAction('ADD_EXPENSE', created, `Add ${created.category}: "${created.title}" (৳${created.amount})`);
+      setPendingSyncQueue(q);
+    }
     setExpenses((prev) => [created, ...prev]);
   };
 
   const deleteExpense = (id: string) => {
+    if (!isOnline) {
+      const q = enqueueOfflineAction('DELETE_EXPENSE', { id }, `Delete Expense ${id}`);
+      setPendingSyncQueue(q);
+    }
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   };
 
@@ -467,10 +589,18 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...dep,
       id: `dep-${Date.now()}`,
     };
+    if (!isOnline) {
+      const q = enqueueOfflineAction('ADD_DEPOSIT', created, `Add Deposit (৳${created.amount})`);
+      setPendingSyncQueue(q);
+    }
     setDeposits((prev) => [created, ...prev]);
   };
 
   const deleteDeposit = (id: string) => {
+    if (!isOnline) {
+      const q = enqueueOfflineAction('DELETE_DEPOSIT', { id }, `Delete Deposit ${id}`);
+      setPendingSyncQueue(q);
+    }
     setDeposits((prev) => prev.filter((d) => d.id !== id));
   };
 
@@ -739,6 +869,10 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentPeriod,
         darkMode,
         setDarkMode,
+        colorTheme,
+        setColorTheme,
+        customCursorEnabled,
+        setCustomCursorEnabled,
         members,
         meals,
         expenses,
@@ -756,6 +890,21 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsBackupModalOpen,
         isExportSummaryModalOpen,
         setIsExportSummaryModalOpen,
+        isThemeModalOpen,
+        setIsThemeModalOpen,
+        isAPKModalOpen,
+        setIsAPKModalOpen,
+
+        isOnline,
+        pendingSyncQueue,
+        lastSyncTime,
+        syncOfflineQueueNow,
+        clearPendingOfflineQueue,
+        isOfflineSyncModalOpen,
+        setIsOfflineSyncModalOpen,
+        isVoiceEntryModalOpen,
+        setIsVoiceEntryModalOpen,
+        updatePeriodBudget,
 
         totalMarketExpense,
         totalUtilityExpense,

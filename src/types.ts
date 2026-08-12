@@ -3,6 +3,7 @@ export type MemberStatus = 'Active' | 'Inactive';
 export type PaymentMethod = 'Cash' | 'bKash' | 'Nagad' | 'Bank Transfer';
 export type ExpenseCategory = 'Market Shopping' | 'Utility' | 'Maid / Cook' | 'Gas' | 'Internet' | 'Rent' | 'Miscellaneous';
 export type UtilityCategory = 'Electricity' | 'Cook / Maid' | 'Internet' | 'Gas Cylinder' | 'House Rent' | 'Other Fixed Bills';
+export type ColorTheme = 'emerald' | 'sapphire' | 'amber' | 'rose' | 'cyber' | 'obsidian';
 
 export interface Member {
   id: string;

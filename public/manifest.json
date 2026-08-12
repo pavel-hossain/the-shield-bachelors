@@ -1,0 +1,31 @@
+{
+  "short_name": "The Shield Mess",
+  "name": "The Shield Bachelors Mess System",
+  "description": "Comprehensive Mess Management System for Meals, Utilities, Deposits & Monthly Balance Sheets",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["finance", "utilities", "productivity"]
+}

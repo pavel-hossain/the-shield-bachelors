@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="128" fill="#0f172a"/>
+  <!-- Shield outline -->
+  <path d="M256 64 L384 112 V240 C384 336 256 416 256 416 C256 416 128 336 128 240 V112 Z" fill="none" stroke="#10b981" stroke-width="20" stroke-linejoin="round"/>
+  <!-- Shield inner fill -->
+  <path d="M256 80 L368 122 V235 C368 318 256 390 256 390 C256 390 144 318 144 235 V122 Z" fill="#1e293b"/>
+  <!-- Fork & Knife cross icon inside shield -->
+  <path d="M220 160 v80 c0 18 -12 30 -24 30 v110" stroke="#f59e0b" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M205 160 v40 M235 160 v40" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
+  <path d="M292 160 c15 30 15 70 0 110 v110" stroke="#10b981" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <!-- Center Star Accent -->
+  <circle cx="256" cy="275" r="16" fill="#f59e0b"/>
+</svg>
