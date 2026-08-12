@@ -1,3 +1,4 @@
+import { supabase } from '../supabase';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Member,
@@ -242,6 +243,42 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Fetch initial data from Supabase on mount
+  useEffect(() => {
+    let mounted = true;
+    const fetchAll = async () => {
+      try {
+        const [{ data: membersData, error: membersErr }, { data: mealsData, error: mealsErr }, { data: expensesData, error: expensesErr }, { data: depositsData, error: depositsErr }] = await Promise.all([
+          supabase.from('members').select('*'),
+          supabase.from('meals').select('*'),
+          supabase.from('expenses').select('*'),
+          supabase.from('deposits').select('*'),
+        ]);
+
+        if (!mounted) return;
+
+        if (membersErr) console.error('Supabase members fetch error:', membersErr);
+        else if (membersData && Array.isArray(membersData) && membersData.length > 0) setMembers(membersData as any);
+
+        if (mealsErr) console.error('Supabase meals fetch error:', mealsErr);
+        else if (mealsData && Array.isArray(mealsData) && mealsData.length > 0) setMeals(mealsData as any);
+
+        if (expensesErr) console.error('Supabase expenses fetch error:', expensesErr);
+        else if (expensesData && Array.isArray(expensesData) && expensesData.length > 0) setExpenses(expensesData as any);
+
+        if (depositsErr) console.error('Supabase deposits fetch error:', depositsErr);
+        else if (depositsData && Array.isArray(depositsData) && depositsData.length > 0) setDeposits(depositsData as any);
+      } catch (err) {
+        console.error('Failed fetching initial data from Supabase:', err);
+      }
+    };
+
+    fetchAll();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const syncOfflineQueueNow = () => {
     // Process queue items
     const queue = getOfflineQueue();
@@ -453,11 +490,32 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Handlers
   const addMember = (newM: Omit<Member, 'id'>) => {
-    const created: Member = {
+    const createdLocal: Member = {
       ...newM,
       id: `m-${Date.now()}`,
     };
-    setMembers((prev) => [...prev, created]);
+
+    // Optimistically update local state
+    setMembers((prev) => [...prev, createdLocal]);
+
+    if (!isOnline) {
+      const q = enqueueOfflineAction('ADD_MEMBER', createdLocal, `Add Member ${createdLocal.name}`);
+      setPendingSyncQueue(q);
+      return;
+    }
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('members').insert([{ ...newM }]).select();
+        if (error) throw error;
+        if (data && data[0]) {
+          // Replace optimistic entry with server row (if id differs)
+          setMembers((prev) => prev.map((m) => (m.id === createdLocal.id ? (data[0] as any) : m)));
+        }
+      } catch (err) {
+        console.error('Failed to insert member to Supabase:', err);
+      }
+    })();
   };
 
   const updateMember = (updated: Member) => {
@@ -488,6 +546,7 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPendingSyncQueue(q);
     }
 
+    // Optimistic local update
     setMeals((prev) => {
       const idx = prev.findIndex((m) => m.date === date && m.memberId === memberId);
       if (idx >= 0) {
@@ -508,6 +567,42 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ];
       }
     });
+
+    if (!isOnline) return;
+
+    (async () => {
+      try {
+        // Try updating existing record by date + memberId
+        const { data: updated, error: updateErr } = await supabase
+          .from('meals')
+          .update({ breakfast, lunch, dinner })
+          .eq('date', date)
+          .eq('memberId', memberId)
+          .select();
+
+        if (updateErr) {
+          // If update failed because no row exists, try insert
+          console.warn('Meal update error (will try insert):', updateErr.message || updateErr);
+        }
+
+        if (!updated || updated.length === 0) {
+          const { data: inserted, error: insertErr } = await supabase
+            .from('meals')
+            .insert([{ date, memberId, breakfast, lunch, dinner }])
+            .select();
+          if (insertErr) throw insertErr;
+          if (inserted && inserted[0]) {
+            // Replace optimistic entry id with server entry
+            setMeals((prev) => prev.map((m) => (m.date === date && m.memberId === memberId ? (inserted[0] as any) : m)));
+          }
+        } else {
+          // updated contains server row(s) — sync local copy
+          setMeals((prev) => prev.map((m) => (m.date === date && m.memberId === memberId ? (updated[0] as any) : m)));
+        }
+      } catch (err) {
+        console.error('Failed to upsert meal to Supabase:', err);
+      }
+    })();
   };
 
   const setAllMealsForDate = (
@@ -565,15 +660,31 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addExpense = (exp: Omit<Expense, 'id'>) => {
-    const created: Expense = {
+    const createdLocal: Expense = {
       ...exp,
       id: `exp-${Date.now()}`,
     };
+
+    setExpenses((prev) => [createdLocal, ...prev]);
+
     if (!isOnline) {
-      const q = enqueueOfflineAction('ADD_EXPENSE', created, `Add ${created.category}: "${created.title}" (৳${created.amount})`);
+      const q = enqueueOfflineAction('ADD_EXPENSE', createdLocal, `Add ${createdLocal.category}: "${createdLocal.title}" (৳${createdLocal.amount})`);
       setPendingSyncQueue(q);
+      return;
     }
-    setExpenses((prev) => [created, ...prev]);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('expenses').insert([{ ...exp }]).select();
+        if (error) throw error;
+        if (data && data[0]) {
+          // Replace optimistic entry with server row
+          setExpenses((prev) => prev.map((e) => (e.id === createdLocal.id ? (data[0] as any) : e)));
+        }
+      } catch (err) {
+        console.error('Failed to insert expense to Supabase:', err);
+      }
+    })();
   };
 
   const deleteExpense = (id: string) => {
@@ -585,15 +696,30 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addDeposit = (dep: Omit<Deposit, 'id'>) => {
-    const created: Deposit = {
+    const createdLocal: Deposit = {
       ...dep,
       id: `dep-${Date.now()}`,
     };
+
+    setDeposits((prev) => [createdLocal, ...prev]);
+
     if (!isOnline) {
-      const q = enqueueOfflineAction('ADD_DEPOSIT', created, `Add Deposit (৳${created.amount})`);
+      const q = enqueueOfflineAction('ADD_DEPOSIT', createdLocal, `Add Deposit (৳${createdLocal.amount})`);
       setPendingSyncQueue(q);
+      return;
     }
-    setDeposits((prev) => [created, ...prev]);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('deposits').insert([{ ...dep }]).select();
+        if (error) throw error;
+        if (data && data[0]) {
+          setDeposits((prev) => prev.map((d) => (d.id === createdLocal.id ? (data[0] as any) : d)));
+        }
+      } catch (err) {
+        console.error('Failed to insert deposit to Supabase:', err);
+      }
+    })();
   };
 
   const deleteDeposit = (id: string) => {
