@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMess } from '../../context/MessContext';
 import { PaymentMethod } from '../../types';
-import { CreditCard, Plus, Trash2, History, Search, Calendar, User, Hash, FileText } from 'lucide-react';
+import { CreditCard, Plus, Trash2, History, Search, Calendar, User, Hash, FileText, Copy, Check, Smartphone, Building2 } from 'lucide-react';
 import { DepositsPDFModal } from '../Reports/DepositsPDFModal';
 
 interface DepositsModuleProps {
@@ -22,12 +22,20 @@ export const DepositsModule: React.FC<DepositsModuleProps> = ({
     totalDepositsAmount,
     managerCashBalance,
     isManagerMode,
+    messProfile,
   } = useMess();
 
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'history'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMethodFilter, setSelectedMethodFilter] = useState<string>('All');
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   // Form State for Adding Deposit
   const todayStr = `${currentPeriod.year}-${currentPeriod.month < 10 ? '0' + currentPeriod.month : currentPeriod.month}-09`;
@@ -57,7 +65,7 @@ export const DepositsModule: React.FC<DepositsModuleProps> = ({
     setIsAddModalOpen(false);
   };
 
-  const paymentMethodsList: PaymentMethod[] = ['Cash', 'bKash', 'Nagad', 'Bank Transfer'];
+  const paymentMethodsList: PaymentMethod[] = ['Cash', 'bKash', 'Nagad', 'Rocket', 'Bank Transfer'];
 
   // Filtered deposits
   const currentMonthPrefix = `${currentPeriod.year}-${currentPeriod.month < 10 ? '0' + currentPeriod.month : currentPeriod.month}`;
@@ -164,6 +172,70 @@ export const DepositsModule: React.FC<DepositsModuleProps> = ({
             ৳ {managerCashBalance.toLocaleString()}
           </div>
           <span className="text-[10px] text-slate-400">Total Deposits minus Expenses</span>
+        </div>
+      </div>
+
+      {/* Official Mess Pay Accounts Quick Bar */}
+      <div className="p-3.5 rounded-xl bg-slate-900 text-white border border-slate-800 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Official Mess Deposit Numbers & Bank A/C</span>
+          </span>
+          <span className="text-[10px] text-slate-400">Click to copy</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {/* bKash */}
+          <button
+            type="button"
+            onClick={() => handleCopy(messProfile?.bKashNumber || '01948545255', 'dep_bkash')}
+            className="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-pink-500/50 transition cursor-pointer text-left"
+          >
+            <div>
+              <p className="text-[10px] text-pink-400 font-bold uppercase">bKash</p>
+              <p className="font-mono font-bold text-white text-[11px]">{messProfile?.bKashNumber || '01948545255'}</p>
+            </div>
+            {copiedKey === 'dep_bkash' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+          </button>
+
+          {/* Nagad */}
+          <button
+            type="button"
+            onClick={() => handleCopy(messProfile?.nagadNumber || '01948545255', 'dep_nagad')}
+            className="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 transition cursor-pointer text-left"
+          >
+            <div>
+              <p className="text-[10px] text-amber-400 font-bold uppercase">Nagad</p>
+              <p className="font-mono font-bold text-white text-[11px]">{messProfile?.nagadNumber || '01948545255'}</p>
+            </div>
+            {copiedKey === 'dep_nagad' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Rocket */}
+          <button
+            type="button"
+            onClick={() => handleCopy(messProfile?.rocketNumber || '018776890414', 'dep_rocket')}
+            className="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-purple-500/50 transition cursor-pointer text-left"
+          >
+            <div>
+              <p className="text-[10px] text-purple-400 font-bold uppercase">Rocket</p>
+              <p className="font-mono font-bold text-white text-[11px]">{messProfile?.rocketNumber || '018776890414'}</p>
+            </div>
+            {copiedKey === 'dep_rocket' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Dutch Bangla Bank */}
+          <button
+            type="button"
+            onClick={() => handleCopy('2281600015015', 'dep_dbbl')}
+            className="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500/50 transition cursor-pointer text-left"
+          >
+            <div>
+              <p className="text-[10px] text-emerald-400 font-bold uppercase truncate">Dutch-Bangla Bank</p>
+              <p className="font-mono font-bold text-white text-[11px]">2281600015015</p>
+            </div>
+            {copiedKey === 'dep_dbbl' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 

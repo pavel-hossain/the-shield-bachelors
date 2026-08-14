@@ -17,9 +17,20 @@ import {
   BarChart3,
   Download,
   Calculator,
+  Bell,
+  FileBadge,
+  UploadCloud,
+  Database,
+  Target,
+  Trophy,
+  Sparkles,
+  Clock,
 } from 'lucide-react';
 import { TabType } from '../BottomNav';
 import { BudgetAlertBanner } from './BudgetAlertBanner';
+import { MonthlyGoalProgress } from './MonthlyGoalProgress';
+import { MemberLeaderboard } from '../Members/MemberLeaderboard';
+import { MealCountReminders } from '../DailyMeals/MealCountReminders';
 
 interface ExecutiveDashboardProps {
   setActiveTab: (tab: TabType) => void;
@@ -53,6 +64,14 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
     closeMonthAndStartNewCycle,
     isManagerMode,
     setIsAdminModalOpen,
+    setIsNotificationModalOpen,
+    setIsProfileModalOpen,
+    setIsBulkUploadModalOpen,
+    setIsBackupModalOpen,
+    setIsGoalModalOpen,
+    setIsCategorizerModalOpen,
+    setIsLeaderboardModalOpen,
+    setIsMealReminderModalOpen,
   } = useMess();
 
   const [isCloseMonthConfirmOpen, setIsCloseMonthConfirmOpen] = React.useState(false);
@@ -84,52 +103,112 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('summary')}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shadow-xs"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shadow-xs cursor-pointer"
             title="Open Monthly Financial Summary & Balance Sheets"
           >
             <Calculator className="w-3.5 h-3.5" />
             <span>Financial Summary</span>
           </button>
           <button
-            onClick={() => setIsExportSummaryModalOpen(true)}
-            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap shadow-xs"
-            title="Export CSV, PDF Summary & Backups"
+            onClick={() => setActiveTab('analytics')}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shadow-xs cursor-pointer"
+            title="View Analytics & Intelligent Charts"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export Summary</span>
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Analytics</span>
           </button>
           <button
-            onClick={() => setActiveTab('meals')}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+            onClick={() => setIsGoalModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+            title="Monthly Goals, Budget Ceiling & Rate Targets"
           >
-            <Utensils className="w-3.5 h-3.5" />
-            <span>Meals</span>
+            <Target className="w-3.5 h-3.5 text-amber-400" />
+            <span>Goals</span>
           </button>
+          <button
+            onClick={() => setIsLeaderboardModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+            title="Member Contribution Leaderboard & Gamified Badges"
+          >
+            <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+            <span>Leaderboard</span>
+          </button>
+          <button
+            onClick={() => setIsMealReminderModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+            title="Meal Cut-Off Rules & Unrecorded Member Reminders"
+          >
+            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Meal Alerts</span>
+          </button>
+          <button
+            onClick={() => setIsNotificationModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+            title="Open Notifications & Member Alert Center"
+          >
+            <Bell className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Alerts</span>
+          </button>
+          <button
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+            title="Open Official Mess Charter & Rules"
+          >
+            <FileBadge className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Charter</span>
+          </button>
+
+          {/* Manager-Only Controls */}
           {isManagerMode && (
             <>
               <button
+                onClick={() => setIsCategorizerModalOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-pink-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+                title="Smart Expense Auto-Categorizer & Natural Language Receipt Parser"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+                <span>Smart Parser</span>
+              </button>
+              <button
+                onClick={() => setIsBulkUploadModalOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
+                title="Batch Meal Matrix & Paste Importer"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-teal-400" />
+                <span>Bulk Entry</span>
+              </button>
+              <button
+                onClick={() => setIsExportSummaryModalOpen(true)}
+                className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap shadow-xs cursor-pointer"
+                title="Export CSV, PDF Summary & Backups"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export</span>
+              </button>
+              <button
                 onClick={openAddExpenseModal}
-                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border border-slate-700 whitespace-nowrap"
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border border-slate-700 whitespace-nowrap cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
                 <span>Expense</span>
               </button>
               <button
                 onClick={openAddDepositModal}
-                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border border-slate-700 whitespace-nowrap"
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border border-slate-700 whitespace-nowrap cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Deposit</span>
               </button>
               <button
                 onClick={() => setIsCloseMonthConfirmOpen(true)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap"
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap cursor-pointer"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
                 <span>Close Month</span>
               </button>
             </>
           )}
+
           {!isManagerMode && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 px-2.5 py-1 rounded-lg whitespace-nowrap">
@@ -137,7 +216,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
               </span>
               <button
                 onClick={() => setIsAdminModalOpen(true)}
-                className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg transition whitespace-nowrap"
+                className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg transition whitespace-nowrap cursor-pointer"
               >
                 Manager Login
               </button>
@@ -247,31 +326,13 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
       </div>
 
-      {/* Budget Progress Bar Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl shadow-xs">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-bold text-slate-900 dark:text-white">
-              Target Monthly Expense Budget
-            </span>
-          </div>
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-            ৳ {totalOverallExpense.toLocaleString()} / ৳ {targetBudget.toLocaleString()} ({budgetPercentage}%)
-          </span>
-        </div>
-        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              budgetPercentage > 90
-                ? 'bg-rose-500'
-                : budgetPercentage > 75
-                ? 'bg-amber-500'
-                : 'bg-emerald-500'
-            }`}
-            style={{ width: `${budgetPercentage}%` }}
-          />
-        </div>
+      {/* Monthly Goal & Rate Progress Intelligence */}
+      <MonthlyGoalProgress onOpenConfig={() => setIsGoalModalOpen(true)} />
+
+      {/* Leaderboard & Meal Reminder Quick Intelligence Widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <MemberLeaderboard compact={true} />
+        <MealCountReminders compact={true} />
       </div>
 
       {/* Overdue Payment Alert Banner */}

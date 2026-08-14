@@ -73,6 +73,11 @@ export const MemberStatementModal: React.FC = () => {
   // Generate WhatsApp summary text
   const handleWhatsAppSend = () => {
     if (!summary) return;
+    const isDue = summary.netBalance < 0;
+    const paymentFooter = isDue
+      ? `\n\n💳 *Payment Numbers:*\n• bKash / Nagad: 01948545255\n• Rocket: 018776890414\n• DBBL A/C: 2281600015015`
+      : '';
+
     const text = encodeURIComponent(
       `*The Shield Bachelors Mess — Member Statement*\n` +
         `📍 Police Line, Magura | Month: ${currentPeriod.label}\n\n` +
@@ -87,12 +92,13 @@ export const MemberStatementModal: React.FC = () => {
         `----------------------------------------\n` +
         `📌 Net Status: *${
           summary.netBalance > 0
-            ? `Credit: +৳${summary.netBalance.toLocaleString()}`
+            ? `Credit (Refundable): +৳${summary.netBalance.toLocaleString()}`
             : summary.netBalance < 0
-            ? `Due: -৳${Math.abs(summary.netBalance).toLocaleString()}`
+            ? `Due Payable: -৳${Math.abs(summary.netBalance).toLocaleString()}`
             : 'Settled (৳0)'
-        }*\n\n` +
-        `Thank you!\n— Mess Management`
+        }*` +
+        paymentFooter +
+        `\n\nThank you!\n— Mess Management (Aktar Hossain: 01948545255)`
     );
 
     const cleanPhone = member.phone.replace(/[^0-9]/g, '');

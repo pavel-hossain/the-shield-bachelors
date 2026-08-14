@@ -9,6 +9,7 @@ import { ExpensesModule } from './components/Expenses/ExpensesModule';
 import { UtilitiesModule } from './components/Utilities/UtilitiesModule';
 import { DepositsModule } from './components/Deposits/DepositsModule';
 import { MembersModule } from './components/Members/MembersModule';
+import { AnalyticsModule } from './components/Analytics/AnalyticsModule';
 
 import { MemberStatementModal } from './components/Modals/MemberStatementModal';
 import { GlobalSearchModal } from './components/Modals/GlobalSearchModal';
@@ -22,6 +23,18 @@ import { VoiceEntryModal } from './components/Modals/VoiceEntryModal';
 import { OfflineSyncModal } from './components/Modals/OfflineSyncModal';
 import { A4PDFReportModal } from './components/Reports/A4PDFReportModal';
 import { CustomCursor } from './components/CustomCursor';
+import { MemberNotificationModal } from './components/Modals/MemberNotificationModal';
+import { MessProfileModal } from './components/Modals/MessProfileModal';
+import { AutoBackupPrompt } from './components/Modals/AutoBackupPrompt';
+import { BulkUploadHelperModal } from './components/Modals/BulkUploadHelperModal';
+import { MonthlyGoalModal } from './components/Modals/MonthlyGoalModal';
+import { SmartExpenseCategorizerModal } from './components/Modals/SmartExpenseCategorizerModal';
+import { MemberLeaderboardModal } from './components/Modals/MemberLeaderboardModal';
+import { MealCountRemindersModal } from './components/Modals/MealCountRemindersModal';
+import { MonthlyBudgetForecastModal } from './components/Modals/MonthlyBudgetForecastModal';
+import { QuickExpenseScannerModal } from './components/Modals/QuickExpenseScannerModal';
+import { ComparisonChartModal } from './components/Modals/ComparisonChartModal';
+import { DebtSettlementTrackerModal } from './components/Modals/DebtSettlementTrackerModal';
 
 import { useMess } from './context/MessContext';
 
@@ -38,7 +51,7 @@ function MainLayout() {
   const [isAddDepositModalOpen, setIsAddDepositModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors antialiased">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors antialiased pb-20">
       {/* Brand Top Header */}
       <Header />
 
@@ -61,6 +74,8 @@ function MainLayout() {
         {activeTab === 'meals' && <DailyMealsModule />}
 
         {activeTab === 'summary' && <MonthlyFinancialSummaryModule />}
+
+        {activeTab === 'analytics' && <AnalyticsModule />}
 
         {activeTab === 'expenses' && (
           <ExpensesModule
@@ -94,6 +109,18 @@ function MainLayout() {
       <AdminLoginModal />
       <ThemeModal />
       <APKConvertModal />
+      <MemberNotificationModal />
+      <MessProfileModal />
+      <AutoBackupPrompt />
+      <BulkUploadHelperModal />
+      <MonthlyGoalModal />
+      <SmartExpenseCategorizerModal />
+      <MemberLeaderboardModal />
+      <MealCountRemindersModal />
+      <MonthlyBudgetForecastModal />
+      <QuickExpenseScannerModal />
+      <ComparisonChartModal />
+      <DebtSettlementTrackerModal />
       <VoiceEntryModal
         isOpen={isVoiceEntryModalOpen}
         onClose={() => setIsVoiceEntryModalOpen(false)}

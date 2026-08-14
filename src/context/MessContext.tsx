@@ -1,4 +1,3 @@
-import { supabase } from '../supabase';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Member,
@@ -9,6 +8,11 @@ import {
   MemberFinancialSummary,
   GlobalSearchResult,
   ColorTheme,
+  NotificationSettings,
+  MessProfile,
+  DataSnapshot,
+  MonthlyGoalConfig,
+  LeaderboardEntry,
 } from '../types';
 import {
   INITIAL_PERIODS,
@@ -16,6 +20,9 @@ import {
   INITIAL_MEALS,
   INITIAL_EXPENSES,
   INITIAL_DEPOSITS,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_MESS_PROFILE,
+  DEFAULT_MONTHLY_GOALS,
 } from '../data/mockData';
 import {
   getOfflineQueue,
@@ -71,6 +78,56 @@ interface MessContextType {
   setIsThemeModalOpen: (open: boolean) => void;
   isAPKModalOpen: boolean;
   setIsAPKModalOpen: (open: boolean) => void;
+  isNotificationModalOpen: boolean;
+  setIsNotificationModalOpen: (open: boolean) => void;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
+  isBulkUploadModalOpen: boolean;
+  setIsBulkUploadModalOpen: (open: boolean) => void;
+  isAnalyticsModalOpen: boolean;
+  setIsAnalyticsModalOpen: (open: boolean) => void;
+  isGoalModalOpen: boolean;
+  setIsGoalModalOpen: (open: boolean) => void;
+  isLeaderboardModalOpen: boolean;
+  setIsLeaderboardModalOpen: (open: boolean) => void;
+  isMealReminderModalOpen: boolean;
+  setIsMealReminderModalOpen: (open: boolean) => void;
+  isCategorizerModalOpen: boolean;
+  setIsCategorizerModalOpen: (open: boolean) => void;
+  isBudgetForecastModalOpen: boolean;
+  setIsBudgetForecastModalOpen: (open: boolean) => void;
+  isExpenseScannerModalOpen: boolean;
+  setIsExpenseScannerModalOpen: (open: boolean) => void;
+  isComparisonChartModalOpen: boolean;
+  setIsComparisonChartModalOpen: (open: boolean) => void;
+  isDebtSettlementModalOpen: boolean;
+  setIsDebtSettlementModalOpen: (open: boolean) => void;
+
+  // Monthly Goals
+  monthlyGoals: MonthlyGoalConfig;
+  updateMonthlyGoals: (goals: Partial<MonthlyGoalConfig>) => void;
+
+  // Leaderboard
+  leaderboardEntries: LeaderboardEntry[];
+
+  // Notification Settings
+  notificationSettings: NotificationSettings;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+
+  // Mess Profile
+  messProfile: MessProfile;
+  updateMessProfile: (profile: Partial<MessProfile>) => void;
+
+  // Auto-backup & Snapshots
+  snapshots: DataSnapshot[];
+  createSnapshot: (label?: string) => void;
+  restoreSnapshot: (id: string) => { success: boolean; message: string };
+  deleteSnapshot: (id: string) => void;
+  autoBackupSchedule: 'daily' | '3days' | 'weekly' | 'off';
+  setAutoBackupSchedule: (sch: 'daily' | '3days' | 'weekly' | 'off') => void;
+  lastBackupDownloadTime: string | null;
+  isBackupPromptVisible: boolean;
+  dismissBackupPrompt: () => void;
 
   // Offline & Voice State
   isOnline: boolean;
@@ -140,6 +197,12 @@ interface MessContextType {
     deposits?: Omit<Deposit, 'id'>[];
     meals?: { date: string; memberName: string; b: number; l: number; d: number }[];
   }) => { success: boolean; message: string };
+
+  // Bulk Handlers
+  bulkAddExpenses: (expenses: Omit<Expense, 'id'>[]) => { success: boolean; count: number };
+  bulkAddDeposits: (deposits: Omit<Deposit, 'id'>[]) => { success: boolean; count: number };
+  bulkAddMembers: (members: Omit<Member, 'id'>[]) => { success: boolean; count: number };
+  bulkUpsertMeals: (mealRecords: { date: string; memberId: string; breakfast: number; lunch: number; dinner: number; note?: string }[]) => { success: boolean; count: number };
 
   globalSearchResults: (query: string) => GlobalSearchResult[];
   exportBackupData: () => void;
@@ -213,6 +276,294 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isExportSummaryModalOpen, setIsExportSummaryModalOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isAPKModalOpen, setIsAPKModalOpen] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
+  const [isMealReminderModalOpen, setIsMealReminderModalOpen] = useState(false);
+  const [isCategorizerModalOpen, setIsCategorizerModalOpen] = useState(false);
+  const [isBudgetForecastModalOpen, setIsBudgetForecastModalOpen] = useState(false);
+  const [isExpenseScannerModalOpen, setIsExpenseScannerModalOpen] = useState(false);
+  const [isComparisonChartModalOpen, setIsComparisonChartModalOpen] = useState(false);
+  const [isDebtSettlementModalOpen, setIsDebtSettlementModalOpen] = useState(false);
+
+  // Monthly Goals State
+  const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoalConfig>(() => {
+    const saved = localStorage.getItem('shield_mess_monthly_goals');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_MONTHLY_GOALS as MonthlyGoalConfig;
+  });
+
+  const updateMonthlyGoals = (newGoals: Partial<MonthlyGoalConfig>) => {
+    setMonthlyGoals((prev) => {
+      const updated = { ...prev, ...newGoals };
+      localStorage.setItem('shield_mess_monthly_goals', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Notification Settings
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => {
+    const saved = localStorage.getItem('shield_mess_notification_settings');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.bKashNumber === '01712-345678' || !parsed.bKashNumber) {
+          parsed.bKashNumber = '01948545255';
+        }
+        if (parsed.nagadNumber === '01712-345678' || !parsed.nagadNumber) {
+          parsed.nagadNumber = '01948545255';
+        }
+        if (parsed.rocketNumber === '01712-345678-9' || !parsed.rocketNumber) {
+          parsed.rocketNumber = '018776890414';
+        }
+        if (!parsed.bankAccountDetails || parsed.bankAccountDetails.includes('154.120.98765')) {
+          parsed.bankAccountDetails = 'Dutch Bangla Bank: 2281600015015';
+        }
+        return { ...DEFAULT_NOTIFICATION_SETTINGS, ...parsed } as NotificationSettings;
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_NOTIFICATION_SETTINGS as NotificationSettings;
+  });
+
+  const updateNotificationSettings = (newSettings: Partial<NotificationSettings>) => {
+    setNotificationSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem('shield_mess_notification_settings', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Mess Profile
+  const [messProfile, setMessProfile] = useState<MessProfile>(() => {
+    const saved = localStorage.getItem('shield_mess_profile');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.bKashNumber === '01712-345678' || !parsed.bKashNumber) {
+          parsed.bKashNumber = '01948545255';
+        }
+        if (parsed.nagadNumber === '01712-345678' || !parsed.nagadNumber) {
+          parsed.nagadNumber = '01948545255';
+        }
+        if (parsed.rocketNumber === '01712-345678-9' || !parsed.rocketNumber) {
+          parsed.rocketNumber = '018776890414';
+        }
+        if (!parsed.bankAccountDetails || parsed.bankAccountDetails.includes('154.120.98765')) {
+          parsed.bankAccountDetails = 'Dutch Bangla Bank: 2281600015015';
+        }
+        return { ...DEFAULT_MESS_PROFILE, ...parsed } as MessProfile;
+      } catch (e) {
+        // fallback
+      }
+    }
+    return DEFAULT_MESS_PROFILE as MessProfile;
+  });
+
+  const updateMessProfile = (newProfile: Partial<MessProfile>) => {
+    setMessProfile((prev) => {
+      const updated = { ...prev, ...newProfile };
+      localStorage.setItem('shield_mess_profile', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Auto-backup & Snapshots
+  const [snapshots, setSnapshots] = useState<DataSnapshot[]>(() => {
+    const saved = localStorage.getItem('shield_mess_snapshots');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return [];
+  });
+
+  const [autoBackupSchedule, setAutoBackupScheduleState] = useState<'daily' | '3days' | 'weekly' | 'off'>(() => {
+    return (localStorage.getItem('shield_mess_backup_schedule') as any) || '3days';
+  });
+
+  const setAutoBackupSchedule = (sch: 'daily' | '3days' | 'weekly' | 'off') => {
+    setAutoBackupScheduleState(sch);
+    localStorage.setItem('shield_mess_backup_schedule', sch);
+  };
+
+  const [lastBackupDownloadTime, setLastBackupDownloadTime] = useState<string | null>(() => {
+    return localStorage.getItem('shield_mess_last_backup_download');
+  });
+
+  const [isBackupPromptVisible, setIsBackupPromptVisible] = useState(false);
+
+  // Check auto-backup schedule
+  useEffect(() => {
+    if (autoBackupSchedule === 'off') {
+      setIsBackupPromptVisible(false);
+      return;
+    }
+
+    const lastTime = lastBackupDownloadTime ? new Date(lastBackupDownloadTime).getTime() : 0;
+    const now = Date.now();
+    const daysSince = (now - lastTime) / (1000 * 60 * 60 * 24);
+
+    let thresholdDays = 3;
+    if (autoBackupSchedule === 'daily') thresholdDays = 1;
+    if (autoBackupSchedule === 'weekly') thresholdDays = 7;
+
+    if (daysSince >= thresholdDays) {
+      setIsBackupPromptVisible(true);
+    }
+  }, [autoBackupSchedule, lastBackupDownloadTime]);
+
+  const dismissBackupPrompt = () => {
+    setIsBackupPromptVisible(false);
+  };
+
+  const createSnapshot = (label?: string) => {
+    const newSnapshot: DataSnapshot = {
+      id: 'snap-' + Date.now(),
+      timestamp: new Date().toISOString(),
+      label: label || `Snapshot ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+      membersCount: members.length,
+      mealsCount: meals.length,
+      expensesCount: expenses.length,
+      depositsCount: deposits.length,
+      totalExpenseAmount: expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0),
+      totalDepositsAmount: deposits.reduce((s, d) => s + (Number(d.amount) || 0), 0),
+      data: {
+        members: JSON.parse(JSON.stringify(members)),
+        meals: JSON.parse(JSON.stringify(meals)),
+        expenses: JSON.parse(JSON.stringify(expenses)),
+        deposits: JSON.parse(JSON.stringify(deposits)),
+        periods: JSON.parse(JSON.stringify(periods)),
+      },
+    };
+
+    setSnapshots((prev) => {
+      // Keep up to 10 snapshots max
+      const updated = [newSnapshot, ...prev].slice(0, 10);
+      localStorage.setItem('shield_mess_snapshots', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const restoreSnapshot = (snapshotId: string) => {
+    const found = snapshots.find((s) => s.id === snapshotId);
+    if (!found) {
+      return { success: false, message: 'Snapshot not found.' };
+    }
+    // Create an auto recovery checkpoint before restoring
+    createSnapshot(`Auto recovery prior to restoring "${found.label}"`);
+
+    if (found.data.members) setMembers(found.data.members);
+    if (found.data.meals) setMeals(found.data.meals);
+    if (found.data.expenses) setExpenses(found.data.expenses);
+    if (found.data.deposits) setDeposits(found.data.deposits);
+    if (found.data.periods) setPeriods(found.data.periods);
+
+    return {
+      success: true,
+      message: `System successfully restored to snapshot "${found.label}"!`,
+    };
+  };
+
+  const deleteSnapshot = (snapshotId: string) => {
+    setSnapshots((prev) => {
+      const updated = prev.filter((s) => s.id !== snapshotId);
+      localStorage.setItem('shield_mess_snapshots', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Bulk Upload Operations
+  const bulkAddExpenses = (expensesList: Omit<Expense, 'id'>[]) => {
+    if (!expensesList || expensesList.length === 0) return { success: false, count: 0 };
+    const newItems: Expense[] = expensesList.map((exp, idx) => ({
+      ...exp,
+      id: `exp-bulk-${Date.now()}-${idx}`,
+    }));
+    setExpenses((prev) => [...prev, ...newItems]);
+    createSnapshot(`Bulk added ${newItems.length} expenses`);
+    return { success: true, count: newItems.length };
+  };
+
+  const bulkAddDeposits = (depositsList: Omit<Deposit, 'id'>[]) => {
+    if (!depositsList || depositsList.length === 0) return { success: false, count: 0 };
+    const newItems: Deposit[] = depositsList.map((dep, idx) => ({
+      ...dep,
+      id: `dep-bulk-${Date.now()}-${idx}`,
+    }));
+    setDeposits((prev) => [...prev, ...newItems]);
+    createSnapshot(`Bulk added ${newItems.length} deposits`);
+    return { success: true, count: newItems.length };
+  };
+
+  const bulkAddMembers = (membersList: Omit<Member, 'id'>[]) => {
+    if (!membersList || membersList.length === 0) return { success: false, count: 0 };
+    const avatarColors = [
+      'bg-emerald-600 text-white',
+      'bg-indigo-600 text-white',
+      'bg-amber-600 text-white',
+      'bg-rose-600 text-white',
+      'bg-teal-600 text-white',
+      'bg-purple-600 text-white',
+      'bg-cyan-600 text-white',
+      'bg-blue-600 text-white',
+    ];
+    const newItems: Member[] = membersList.map((mem, idx) => ({
+      ...mem,
+      id: `m-bulk-${Date.now()}-${idx}`,
+      avatarColor: mem.avatarColor || avatarColors[(members.length + idx) % avatarColors.length],
+      applyBenchmark: mem.applyBenchmark !== undefined ? mem.applyBenchmark : true,
+    }));
+    setMembers((prev) => [...prev, ...newItems]);
+    createSnapshot(`Bulk added ${newItems.length} members`);
+    return { success: true, count: newItems.length };
+  };
+
+  const bulkUpsertMeals = (mealList: { date: string; memberId: string; breakfast: number; lunch: number; dinner: number; note?: string }[]) => {
+    if (!mealList || mealList.length === 0) return { success: false, count: 0 };
+    setMeals((prev) => {
+      let updated = [...prev];
+      mealList.forEach((item) => {
+        const idx = updated.findIndex((r) => r.date === item.date && r.memberId === item.memberId);
+        if (idx >= 0) {
+          updated[idx] = {
+            ...updated[idx],
+            breakfast: item.breakfast,
+            lunch: item.lunch,
+            dinner: item.dinner,
+            note: item.note || updated[idx].note,
+          };
+        } else {
+          updated.push({
+            id: `meal-bulk-${item.date}-${item.memberId}-${Date.now()}`,
+            date: item.date,
+            memberId: item.memberId,
+            breakfast: item.breakfast,
+            lunch: item.lunch,
+            dinner: item.dinner,
+            note: item.note,
+          });
+        }
+      });
+      return updated;
+    });
+    createSnapshot(`Bulk updated ${mealList.length} meal entries`);
+    return { success: true, count: mealList.length };
+  };
+
 
   // Offline & Voice Modals & Sync State
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
@@ -243,42 +594,6 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Fetch initial data from Supabase on mount
-  useEffect(() => {
-    let mounted = true;
-    const fetchAll = async () => {
-      try {
-        const [{ data: membersData, error: membersErr }, { data: mealsData, error: mealsErr }, { data: expensesData, error: expensesErr }, { data: depositsData, error: depositsErr }] = await Promise.all([
-          supabase.from('members').select('*'),
-          supabase.from('meals').select('*'),
-          supabase.from('expenses').select('*'),
-          supabase.from('deposits').select('*'),
-        ]);
-
-        if (!mounted) return;
-
-        if (membersErr) console.error('Supabase members fetch error:', membersErr);
-        else if (membersData && Array.isArray(membersData) && membersData.length > 0) setMembers(membersData as any);
-
-        if (mealsErr) console.error('Supabase meals fetch error:', mealsErr);
-        else if (mealsData && Array.isArray(mealsData) && mealsData.length > 0) setMeals(mealsData as any);
-
-        if (expensesErr) console.error('Supabase expenses fetch error:', expensesErr);
-        else if (expensesData && Array.isArray(expensesData) && expensesData.length > 0) setExpenses(expensesData as any);
-
-        if (depositsErr) console.error('Supabase deposits fetch error:', depositsErr);
-        else if (depositsData && Array.isArray(depositsData) && depositsData.length > 0) setDeposits(depositsData as any);
-      } catch (err) {
-        console.error('Failed fetching initial data from Supabase:', err);
-      }
-    };
-
-    fetchAll();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
   const syncOfflineQueueNow = () => {
     // Process queue items
     const queue = getOfflineQueue();
@@ -488,34 +803,89 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
       projectedMeals: s.projectedMeals || 0,
     }));
 
+  // Dynamic Leaderboard Calculations
+  const leaderboardEntries: LeaderboardEntry[] = memberSummaries
+    .filter((s) => s.member.status === 'Active')
+    .map((s) => {
+      // Bazar shopping count this month
+      const memberBazarRuns = monthExpenses.filter(
+        (e) => e.paidByMemberId === s.member.id && (e.category === 'Market Shopping' || e.category === 'Miscellaneous')
+      );
+      const bazarCount = memberBazarRuns.length;
+
+      // Punctuality score (0 - 100)
+      let punctualityScore = 70;
+      if (s.netBalance >= 500) punctualityScore = 100;
+      else if (s.netBalance >= 0) punctualityScore = 90;
+      else if (s.netBalance >= -300) punctualityScore = 60;
+      else punctualityScore = 30;
+
+      const isBenchmarkMet = s.actualMeals >= (currentPeriod.benchmarkMeals || 45);
+
+      // Total Score Calculation
+      const depositPoints = Math.round((s.totalDeposits / 100) * 1.5);
+      const mealPoints = Math.round(s.actualMeals * 2.5);
+      const bazarPoints = bazarCount * 35;
+      const balanceBonus = s.netBalance > 0 ? 40 : s.netBalance >= -200 ? 10 : -25;
+      const benchmarkBonus = isBenchmarkMet ? 50 : 0;
+
+      const score = Math.max(10, depositPoints + mealPoints + bazarPoints + balanceBonus + benchmarkBonus);
+
+      // Generate Badges
+      const badges: { label: string; icon: string; desc: string; color: string }[] = [];
+      if (s.totalDeposits >= 5000) {
+        badges.push({ label: 'Top Depositor', icon: '💰', desc: 'Deposited ৳5,000+ this month', color: 'emerald' });
+      }
+      if (bazarCount >= 2) {
+        badges.push({ label: 'Bazar Hero', icon: '🛒', desc: `${bazarCount} market shopping trips completed`, color: 'amber' });
+      }
+      if (s.netBalance >= 200) {
+        badges.push({ label: 'Zero Dues Star', icon: '🛡️', desc: 'Maintains advance balance buffer', color: 'indigo' });
+      }
+      if (isBenchmarkMet) {
+        badges.push({ label: 'Benchmark Pro', icon: '🎯', desc: 'Achieved 45+ effective meal quota', color: 'violet' });
+      }
+      if (s.actualMeals >= 30) {
+        badges.push({ label: 'Regular Diner', icon: '🍽️', desc: 'High dining regularity and attendance', color: 'teal' });
+      }
+
+      return {
+        member: s.member,
+        rank: 0,
+        score,
+        badges,
+        totalDeposited: s.totalDeposits,
+        totalMeals: s.actualMeals,
+        bazarCount,
+        netBalance: s.netBalance,
+        punctualityScore,
+        isBenchmarkMet,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((entry, idx) => {
+      const finalBadges = [...entry.badges];
+      if (idx === 0) {
+        finalBadges.unshift({ label: 'Mess Champion', icon: '👑', desc: 'Rank #1 overall contribution leader', color: 'amber' });
+      } else if (idx === 1) {
+        finalBadges.unshift({ label: 'Silver Ace', icon: '🥈', desc: 'Rank #2 leading contributor', color: 'slate' });
+      } else if (idx === 2) {
+        finalBadges.unshift({ label: 'Bronze Master', icon: '🥉', desc: 'Rank #3 leading contributor', color: 'orange' });
+      }
+      return {
+        ...entry,
+        rank: idx + 1,
+        badges: finalBadges,
+      };
+    });
+
   // Handlers
   const addMember = (newM: Omit<Member, 'id'>) => {
-    const createdLocal: Member = {
+    const created: Member = {
       ...newM,
       id: `m-${Date.now()}`,
     };
-
-    // Optimistically update local state
-    setMembers((prev) => [...prev, createdLocal]);
-
-    if (!isOnline) {
-      const q = enqueueOfflineAction('ADD_MEMBER', createdLocal, `Add Member ${createdLocal.name}`);
-      setPendingSyncQueue(q);
-      return;
-    }
-
-    (async () => {
-      try {
-        const { data, error } = await supabase.from('members').insert([{ ...newM }]).select();
-        if (error) throw error;
-        if (data && data[0]) {
-          // Replace optimistic entry with server row (if id differs)
-          setMembers((prev) => prev.map((m) => (m.id === createdLocal.id ? (data[0] as any) : m)));
-        }
-      } catch (err) {
-        console.error('Failed to insert member to Supabase:', err);
-      }
-    })();
+    setMembers((prev) => [...prev, created]);
   };
 
   const updateMember = (updated: Member) => {
@@ -546,7 +916,6 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPendingSyncQueue(q);
     }
 
-    // Optimistic local update
     setMeals((prev) => {
       const idx = prev.findIndex((m) => m.date === date && m.memberId === memberId);
       if (idx >= 0) {
@@ -567,42 +936,6 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ];
       }
     });
-
-    if (!isOnline) return;
-
-    (async () => {
-      try {
-        // Try updating existing record by date + memberId
-        const { data: updated, error: updateErr } = await supabase
-          .from('meals')
-          .update({ breakfast, lunch, dinner })
-          .eq('date', date)
-          .eq('memberId', memberId)
-          .select();
-
-        if (updateErr) {
-          // If update failed because no row exists, try insert
-          console.warn('Meal update error (will try insert):', updateErr.message || updateErr);
-        }
-
-        if (!updated || updated.length === 0) {
-          const { data: inserted, error: insertErr } = await supabase
-            .from('meals')
-            .insert([{ date, memberId, breakfast, lunch, dinner }])
-            .select();
-          if (insertErr) throw insertErr;
-          if (inserted && inserted[0]) {
-            // Replace optimistic entry id with server entry
-            setMeals((prev) => prev.map((m) => (m.date === date && m.memberId === memberId ? (inserted[0] as any) : m)));
-          }
-        } else {
-          // updated contains server row(s) — sync local copy
-          setMeals((prev) => prev.map((m) => (m.date === date && m.memberId === memberId ? (updated[0] as any) : m)));
-        }
-      } catch (err) {
-        console.error('Failed to upsert meal to Supabase:', err);
-      }
-    })();
   };
 
   const setAllMealsForDate = (
@@ -660,31 +993,15 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addExpense = (exp: Omit<Expense, 'id'>) => {
-    const createdLocal: Expense = {
+    const created: Expense = {
       ...exp,
       id: `exp-${Date.now()}`,
     };
-
-    setExpenses((prev) => [createdLocal, ...prev]);
-
     if (!isOnline) {
-      const q = enqueueOfflineAction('ADD_EXPENSE', createdLocal, `Add ${createdLocal.category}: "${createdLocal.title}" (৳${createdLocal.amount})`);
+      const q = enqueueOfflineAction('ADD_EXPENSE', created, `Add ${created.category}: "${created.title}" (৳${created.amount})`);
       setPendingSyncQueue(q);
-      return;
     }
-
-    (async () => {
-      try {
-        const { data, error } = await supabase.from('expenses').insert([{ ...exp }]).select();
-        if (error) throw error;
-        if (data && data[0]) {
-          // Replace optimistic entry with server row
-          setExpenses((prev) => prev.map((e) => (e.id === createdLocal.id ? (data[0] as any) : e)));
-        }
-      } catch (err) {
-        console.error('Failed to insert expense to Supabase:', err);
-      }
-    })();
+    setExpenses((prev) => [created, ...prev]);
   };
 
   const deleteExpense = (id: string) => {
@@ -696,30 +1013,15 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addDeposit = (dep: Omit<Deposit, 'id'>) => {
-    const createdLocal: Deposit = {
+    const created: Deposit = {
       ...dep,
       id: `dep-${Date.now()}`,
     };
-
-    setDeposits((prev) => [createdLocal, ...prev]);
-
     if (!isOnline) {
-      const q = enqueueOfflineAction('ADD_DEPOSIT', createdLocal, `Add Deposit (৳${createdLocal.amount})`);
+      const q = enqueueOfflineAction('ADD_DEPOSIT', created, `Add Deposit (৳${created.amount})`);
       setPendingSyncQueue(q);
-      return;
     }
-
-    (async () => {
-      try {
-        const { data, error } = await supabase.from('deposits').insert([{ ...dep }]).select();
-        if (error) throw error;
-        if (data && data[0]) {
-          setDeposits((prev) => prev.map((d) => (d.id === createdLocal.id ? (data[0] as any) : d)));
-        }
-      } catch (err) {
-        console.error('Failed to insert deposit to Supabase:', err);
-      }
-    })();
+    setDeposits((prev) => [created, ...prev]);
   };
 
   const deleteDeposit = (id: string) => {
@@ -1020,6 +1322,55 @@ export const MessProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsThemeModalOpen,
         isAPKModalOpen,
         setIsAPKModalOpen,
+        isNotificationModalOpen,
+        setIsNotificationModalOpen,
+        isProfileModalOpen,
+        setIsProfileModalOpen,
+        isBulkUploadModalOpen,
+        setIsBulkUploadModalOpen,
+        isAnalyticsModalOpen,
+        setIsAnalyticsModalOpen,
+        isGoalModalOpen,
+        setIsGoalModalOpen,
+        isLeaderboardModalOpen,
+        setIsLeaderboardModalOpen,
+        isMealReminderModalOpen,
+        setIsMealReminderModalOpen,
+        isCategorizerModalOpen,
+        setIsCategorizerModalOpen,
+        isBudgetForecastModalOpen,
+        setIsBudgetForecastModalOpen,
+        isExpenseScannerModalOpen,
+        setIsExpenseScannerModalOpen,
+        isComparisonChartModalOpen,
+        setIsComparisonChartModalOpen,
+        isDebtSettlementModalOpen,
+        setIsDebtSettlementModalOpen,
+
+        monthlyGoals,
+        updateMonthlyGoals,
+        leaderboardEntries,
+
+        notificationSettings,
+        updateNotificationSettings,
+
+        messProfile,
+        updateMessProfile,
+
+        snapshots,
+        createSnapshot,
+        restoreSnapshot,
+        deleteSnapshot,
+        autoBackupSchedule,
+        setAutoBackupSchedule,
+        lastBackupDownloadTime,
+        isBackupPromptVisible,
+        dismissBackupPrompt,
+
+        bulkAddExpenses,
+        bulkAddDeposits,
+        bulkAddMembers,
+        bulkUpsertMeals,
 
         isOnline,
         pendingSyncQueue,
